@@ -1,5 +1,4 @@
 import requests
-from bs4 import BeautifulSoup
 import os
 
 # نام فایلی که لینک‌های ارسال شده در آن ذخیره می‌شود
@@ -27,39 +26,42 @@ def save_new_links(links):
             f.write(link + '\n')
     print("-> Save complete.")
 
-def scrape_tgju_news():
+def scrape_tgju_news_from_api():
     """
-    اخبار ویژه را از سایت tgju.org استخراج کرده و فقط موارد جدید را برمی‌گرداند.
+    اخبار ویژه را مستقیماً از API سایت tgju.org استخراج می‌کند.
     """
-    print("Step 2: Scraping news from TGJU...")
-    URL = "https://www.tgju.org/news/tag/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D9%88%DB%8C%DA%98%D9%87"
+    print("Step 2: Scraping news from TGJU's internal API...")
+    # این آدرس API داخلی سایت است که اخبار را برمی‌گرداند
+    API_URL = "https://www.tgju.org/news/ajax"
     BASE_URL = "https://www.tgju.org"
     
-    # --- اصلاحیه اینجاست: اضافه کردن هدر برای شبیه‌سازی مرورگر ---
-    HEADERS = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    # پارامترهایی که به API ارسال می‌شود تا اخبار ویژه را فیلتر کند
+    payload = {
+        'cat': 'special-news',
+        'type': 'news'
     }
     
     new_news_list = []
     sent_links = get_sent_links()
 
     try:
-        # ارسال درخواست HTTP به همراه هدر
-        response = requests.get(URL, headers=HEADERS, timeout=15)
+        # درخواست به صورت POST به API ارسال می‌شود
+        response = requests.post(API_URL, data=payload, timeout=15)
         response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
         
-        news_elements = soup.select(".news-item-row h2 a")
-        print(f"-> Found {len(news_elements)} total news elements in the page's HTML.")
+        # پاسخ به صورت JSON است و نیازی به BeautifulSoup نیست
+        data = response.json()
+        
+        # استخراج اخبار از داده‌های JSON
+        news_items = data.get('items', [])
+        print(f"-> API returned {len(news_items)} total news items.")
 
-        if not news_elements:
-            print("-> WARNING: CSS selector did not find any news elements. The website might be blocking us or its structure has changed.")
-
-        for element in news_elements:
-            title = element.get_text(strip=True)
-            relative_link = element.get('href')
+        for item in news_items:
+            title = item.get('title')
+            # لینک در کلید 'u' قرار دارد
+            relative_link = item.get('u')
             
-            if not relative_link:
+            if not title or not relative_link:
                 continue
 
             full_link = BASE_URL + relative_link
@@ -68,15 +70,15 @@ def scrape_tgju_news():
                 new_news_list.append({'title': title, 'link': full_link})
 
     except requests.exceptions.RequestException as e:
-        print(f"-> ERROR: Could not connect to the website: {e}")
+        print(f"-> ERROR: Could not connect to the API: {e}")
     except Exception as e:
-        print(f"-> ERROR: An unexpected error occurred during scraping: {e}")
+        print(f"-> ERROR: An unexpected error occurred: {e}")
         
     print(f"-> Scraping finished. Found {len(new_news_list)} new items to be saved.")
     return new_news_list
 
 if __name__ == "__main__":
-    latest_news = scrape_tgju_news()
+    latest_news = scrape_tgju_news_from_api()
     
     if latest_news:
         new_links_to_save = [news['link'] for news in latest_news]
