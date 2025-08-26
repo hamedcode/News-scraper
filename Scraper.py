@@ -1,10 +1,14 @@
-import requests
 import os
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 # نام فایلی که لینک‌های ارسال شده در آن ذخیره می‌شود
 SENT_LINKS_FILE = 'sent_links.txt'
 
-print("--- Script Started ---")
+print("--- Script Started (Selenium Version) ---")
 
 def get_sent_links():
     """لینک‌های قبلاً ارسال شده را از فایل می‌خواند."""
@@ -26,69 +30,58 @@ def save_new_links(links):
             f.write(link + '\n')
     print("-> Save complete.")
 
-def scrape_tgju_news_from_api():
+def scrape_tgju_with_selenium():
     """
-    اخبار ویژه را با استفاده از یک نشست (Session) برای مدیریت کوکی‌ها استخراج می‌کند.
+    اخبار را با استفاده از Selenium و یک مرورگر واقعی استخراج می‌کند.
     """
-    print("Step 2: Scraping news from TGJU's internal API using a session...")
-    
-    PAGE_URL = "https://www.tgju.org/news/tag/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D9%88%DB%8C%DA%98%D9%87"
-    API_URL = "https://www.tgju.org/news/ajax"
-    BASE_URL = "https://www.tgju.org"
-    
-    HEADERS = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Referer': PAGE_URL,
-        'X-Requested-With': 'XMLHttpRequest'
-    }
-    
-    payload = {
-        'cat': 'special-news',
-        'type': 'news'
-    }
+    print("Step 2: Scraping news from TGJU using Selenium...")
+    URL = "https://www.tgju.org/news/tag/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D9%88%DB%8C%DA%98%D9%87"
     
     new_news_list = []
     sent_links = get_sent_links()
 
+    # تنظیمات مرورگر کروم برای اجرا در محیط GitHub Actions
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')  # اجرا بدون رابط گرافیکی
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    
+    driver = webdriver.Chrome(options=options)
+    
     try:
-        # ایجاد یک نشست برای حفظ کوکی‌ها در بین درخواست‌ها
-        with requests.Session() as session:
-            # 1. ابتدا به صفحه اصلی "سر می‌زنیم" تا کوکی‌های لازم را دریافت کنیم
-            print("-> Visiting the main page to acquire session cookies...")
-            session.get(PAGE_URL, headers=HEADERS, timeout=15)
-            
-            # 2. حالا با همان نشست (که کوکی‌ها را دارد)، به API درخواست می‌فرستیم
-            print("-> Sending request to the API with acquired cookies...")
-            response = session.post(API_URL, headers=HEADERS, data=payload, timeout=15)
-            response.raise_for_status()
+        print(f"-> Navigating to {URL}")
+        driver.get(URL)
         
-        data = response.json()
+        # منتظر می‌مانیم تا حداقل یک آیتم خبری در صفحه بارگذاری شود (حداکثر 20 ثانیه)
+        wait = WebDriverWait(driver, 20)
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".news-item-row h2 a")))
         
-        news_items = data.get('items', [])
-        print(f"-> API returned {len(news_items)} total news items.")
+        # پیدا کردن تمام المان‌های خبری
+        news_elements = driver.find_elements(By.CSS_SELECTOR, ".news-item-row h2 a")
+        print(f"-> Selenium found {len(news_elements)} total news elements.")
 
-        for item in news_items:
-            title = item.get('title')
-            relative_link = item.get('u')
+        for element in news_elements:
+            title = element.text
+            link = element.get_attribute('href')
             
-            if not title or not relative_link:
+            if not title or not link:
                 continue
-
-            full_link = BASE_URL + relative_link
             
-            if full_link not in sent_links:
-                new_news_list.append({'title': title, 'link': full_link})
+            if link not in sent_links:
+                new_news_list.append({'title': title, 'link': link})
 
-    except requests.exceptions.RequestException as e:
-        print(f"-> ERROR: Could not connect to the API: {e}")
+    except TimeoutException:
+        print("-> ERROR: Timed out waiting for page elements to load. The site might be slow or blocking.")
     except Exception as e:
-        print(f"-> ERROR: An unexpected error occurred: {e}")
+        print(f"-> ERROR: An unexpected error occurred with Selenium: {e}")
+    finally:
+        driver.quit() # حتماً مرورگر را می‌بندیم
         
     print(f"-> Scraping finished. Found {len(new_news_list)} new items to be saved.")
     return new_news_list
 
 if __name__ == "__main__":
-    latest_news = scrape_tgju_news_from_api()
+    latest_news = scrape_tgju_with_selenium()
     
     if latest_news:
         new_links_to_save = [news['link'] for news in latest_news]
