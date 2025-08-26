@@ -28,16 +28,17 @@ def save_new_links(links):
 
 def scrape_tgju_news_from_api():
     """
-    اخبار ویژه را مستقیماً از API سایت tgju.org استخراج می‌کند.
+    اخبار ویژه را با استفاده از یک نشست (Session) برای مدیریت کوکی‌ها استخراج می‌کند.
     """
-    print("Step 2: Scraping news from TGJU's internal API...")
+    print("Step 2: Scraping news from TGJU's internal API using a session...")
+    
+    PAGE_URL = "https://www.tgju.org/news/tag/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D9%88%DB%8C%DA%98%D9%87"
     API_URL = "https://www.tgju.org/news/ajax"
     BASE_URL = "https://www.tgju.org"
     
-    # --- اصلاحیه نهایی: اضافه کردن هدرهای کامل برای شبیه‌سازی یک درخواست واقعی ---
     HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Referer': 'https://www.tgju.org/news/tag/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D9%88%DB%8C%DA%98%D9%87',
+        'Referer': PAGE_URL,
         'X-Requested-With': 'XMLHttpRequest'
     }
     
@@ -50,8 +51,16 @@ def scrape_tgju_news_from_api():
     sent_links = get_sent_links()
 
     try:
-        response = requests.post(API_URL, headers=HEADERS, data=payload, timeout=15)
-        response.raise_for_status()
+        # ایجاد یک نشست برای حفظ کوکی‌ها در بین درخواست‌ها
+        with requests.Session() as session:
+            # 1. ابتدا به صفحه اصلی "سر می‌زنیم" تا کوکی‌های لازم را دریافت کنیم
+            print("-> Visiting the main page to acquire session cookies...")
+            session.get(PAGE_URL, headers=HEADERS, timeout=15)
+            
+            # 2. حالا با همان نشست (که کوکی‌ها را دارد)، به API درخواست می‌فرستیم
+            print("-> Sending request to the API with acquired cookies...")
+            response = session.post(API_URL, headers=HEADERS, data=payload, timeout=15)
+            response.raise_for_status()
         
         data = response.json()
         
