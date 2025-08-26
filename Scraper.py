@@ -29,14 +29,9 @@ def scrape_tgju_news():
     sent_links = get_sent_links()
 
     try:
-        # ارسال درخواست HTTP به سایت
         response = requests.get(URL, timeout=15)
-        response.raise_for_status()  # بررسی موفقیت‌آمیز بودن درخواست
-
-        # تجزیه محتوای HTML
+        response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
-
-        # پیدا کردن تمام آیتم‌های خبری با استفاده از سلکتور CSS
         news_elements = soup.select(".news-item-row h2 a")
 
         for element in news_elements:
@@ -63,19 +58,12 @@ if __name__ == "__main__":
     latest_news = scrape_tgju_news()
     
     if latest_news:
-        print(f"Found {len(latest_news)} new news items:\n")
+        print(f"Found {len(latest_news)} new news items.")
         
-        # در اینجا در آینده کد ارسال به تلگرام قرار می‌گیرد
-        # فعلاً فقط آنها را چاپ می‌کنیم
-        for index, news in enumerate(latest_news):
-            print(f"{index + 1}. Title: {news['title']}")
-            print(f"   Link: {news['link']}\n")
-            # message = f"**{news['title']}**\n[Read More]({news['link']})"
-            # send_to_telegram(message) # این تابع در مرحله بعد اضافه می‌شود
-
         # لینک‌های اخبار جدید را برای جلوگیری از ارسال مجدد، ذخیره می‌کنیم
         new_links_to_save = [news['link'] for news in latest_news]
         save_new_links(new_links_to_save)
+        print(f"Saved {len(new_links_to_save)} new links to {SENT_LINKS_FILE}")
     else:
-        print("No new news items found or an error occurred.")
+        print("No new news items found.")
 
