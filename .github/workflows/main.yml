@@ -1,9 +1,9 @@
-name: Scrape And Save News
+name: Scrape TGJU News with Selenium
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 * * * *' # هر ساعت یکبار اجرا می‌شود
+    - cron: '0 */2 * * *' # هر دو ساعت یکبار
 
 jobs:
   scrape:
@@ -16,6 +16,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+      
+      # --- مراحل جدید برای نصب کروم ---
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -23,8 +27,6 @@ jobs:
       - name: Run scraper script
         run: python Scraper.py
 
-      # این مرحله بسیار مهم است
-      # تغییرات فایل sent_links.txt را به مخزن کامیت می‌کند
       - name: Commit and push if changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
