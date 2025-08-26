@@ -31,11 +31,16 @@ def scrape_tgju_news_from_api():
     اخبار ویژه را مستقیماً از API سایت tgju.org استخراج می‌کند.
     """
     print("Step 2: Scraping news from TGJU's internal API...")
-    # این آدرس API داخلی سایت است که اخبار را برمی‌گرداند
     API_URL = "https://www.tgju.org/news/ajax"
     BASE_URL = "https://www.tgju.org"
     
-    # پارامترهایی که به API ارسال می‌شود تا اخبار ویژه را فیلتر کند
+    # --- اصلاحیه نهایی: اضافه کردن هدرهای کامل برای شبیه‌سازی یک درخواست واقعی ---
+    HEADERS = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Referer': 'https://www.tgju.org/news/tag/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D9%88%DB%8C%DA%98%D9%87',
+        'X-Requested-With': 'XMLHttpRequest'
+    }
+    
     payload = {
         'cat': 'special-news',
         'type': 'news'
@@ -45,20 +50,16 @@ def scrape_tgju_news_from_api():
     sent_links = get_sent_links()
 
     try:
-        # درخواست به صورت POST به API ارسال می‌شود
-        response = requests.post(API_URL, data=payload, timeout=15)
+        response = requests.post(API_URL, headers=HEADERS, data=payload, timeout=15)
         response.raise_for_status()
         
-        # پاسخ به صورت JSON است و نیازی به BeautifulSoup نیست
         data = response.json()
         
-        # استخراج اخبار از داده‌های JSON
         news_items = data.get('items', [])
         print(f"-> API returned {len(news_items)} total news items.")
 
         for item in news_items:
             title = item.get('title')
-            # لینک در کلید 'u' قرار دارد
             relative_link = item.get('u')
             
             if not title or not relative_link:
