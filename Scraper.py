@@ -35,11 +35,17 @@ def scrape_tgju_news():
     URL = "https://www.tgju.org/news/tag/%D8%A7%D8%AE%D8%A8%D8%A7%D8%B1-%D9%88%DB%8C%DA%98%D9%87"
     BASE_URL = "https://www.tgju.org"
     
+    # --- اصلاحیه اینجاست: اضافه کردن هدر برای شبیه‌سازی مرورگر ---
+    HEADERS = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    
     new_news_list = []
     sent_links = get_sent_links()
 
     try:
-        response = requests.get(URL, timeout=15)
+        # ارسال درخواست HTTP به همراه هدر
+        response = requests.get(URL, headers=HEADERS, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         
@@ -47,7 +53,7 @@ def scrape_tgju_news():
         print(f"-> Found {len(news_elements)} total news elements in the page's HTML.")
 
         if not news_elements:
-            print("-> WARNING: CSS selector did not find any news elements. The website structure might have changed.")
+            print("-> WARNING: CSS selector did not find any news elements. The website might be blocking us or its structure has changed.")
 
         for element in news_elements:
             title = element.get_text(strip=True)
@@ -79,4 +85,3 @@ if __name__ == "__main__":
         print("Step 3: No new news items to save.")
     
     print("--- Script Finished ---")
-
