@@ -2,6 +2,7 @@ import feedparser
 import os
 from bs4 import BeautifulSoup
 import telegram
+import time # برای افزودن تاخیر
 
 # --- خواندن متغیرها از GitHub Secrets ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -11,7 +12,7 @@ SENT_LINKS_FILE = 'sent_links.txt'
 def send_to_telegram(message):
     """یک پیام متنی دریافت کرده و به تلگرام ارسال می‌کند."""
     if not BOT_TOKEN or not CHAT_ID:
-        print("خطا: توکن ربات یا شناسه چت تعریف نشده است. لطفاً GitHub Secrets را بررسی کنید.")
+        print("خطا: توکن ربات یا شناسه چت تعریف نشده است.")
         return False
     
     try:
@@ -20,7 +21,7 @@ def send_to_telegram(message):
             chat_id=CHAT_ID, 
             text=message, 
             parse_mode='Markdown',
-            disable_web_page_preview=False # برای نمایش پیش‌نمایش لینک
+            disable_web_page_preview=False
         )
         print("پیام با موفقیت به تلگرام ارسال شد.")
         return True
@@ -75,7 +76,6 @@ def get_news_from_rss():
     return new_news_list
 
 if __name__ == "__main__":
-    # برعکس کردن لیست اخبار جدید تا ترتیب ارسال آن‌ها از قدیمی به جدید باشد
     latest_news = list(reversed(get_news_from_rss()))
     
     if latest_news:
@@ -83,18 +83,17 @@ if __name__ == "__main__":
         
         newly_sent_links = []
         for news in latest_news:
-            # ساخت پیام با فرمت Markdown برای تلگرام
             message = (
                 f"**{news['title']}**\n\n"
                 f"{news['summary']}\n\n"
                 f"[مشاهده خبر]({news['link']})"
             )
             
-            # اگر پیام با موفقیت ارسال شد، لینک آن را برای ذخیره شدن آماده کن
             if send_to_telegram(message):
                 newly_sent_links.append(news['link'])
+                # --- اصلاحیه نهایی: افزودن تاخیر یک ثانیه‌ای ---
+                time.sleep(1)
 
-        # فقط لینک‌هایی را ذخیره کن که با موفقیت به تلگرام ارسال شده‌اند
         if newly_sent_links:
             save_new_links(newly_sent_links)
             print(f"-> {len(newly_sent_links)} لینک جدید با موفقیت ارسال و ذخیره شد.")
