@@ -30,8 +30,8 @@ def get_news_from_rss():
     """استخراج اخبار از فید RSS ساخته شده."""
     print("Step 2: Getting news from your RSS feed...")
     # آدرس RSS شخصی شما
-    RSS_URL = "https://fetchrss.com/feed/aK4HlnCK_13CaK4I1CdS9ZPj.rss"
-    
+   # RSS_URL = "https://fetchrss.com/feed/aK4HlnCK_13CaK4I1CdS9ZPj.rss"
+    RSS_URL = "https://feedfry.com/rss/11f0832c73dc039ab42e2a389ef6231a"
     new_news_list = []
     sent_links = get_sent_links()
     try:
