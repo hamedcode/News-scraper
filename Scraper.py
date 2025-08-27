@@ -2,22 +2,25 @@ import feedparser
 import os
 from bs4 import BeautifulSoup
 import telegram
-import time # برای افزودن تاخیر
+import time
+import asyncio # کتابخانه جدید برای اجرای کدهای غیرهمزمان
 
 # --- خواندن متغیرها از GitHub Secrets ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 SENT_LINKS_FILE = 'sent_links.txt'
 
-def send_to_telegram(message):
-    """یک پیام متنی دریافت کرده و به تلگرام ارسال می‌کند."""
+# --- تابع ارسال به تلگرام به صورت async تعریف شده است ---
+async def send_to_telegram(message):
+    """یک پیام متنی دریافت کرده و به صورت غیرهمزمان به تلگرام ارسال می‌کند."""
     if not BOT_TOKEN or not CHAT_ID:
         print("خطا: توکن ربات یا شناسه چت تعریف نشده است.")
         return False
     
     try:
         bot = telegram.Bot(token=BOT_TOKEN)
-        bot.send_message(
+        # --- کلمه کلیدی await اینجا اضافه شده است ---
+        await bot.send_message(
             chat_id=CHAT_ID, 
             text=message, 
             parse_mode='Markdown',
@@ -75,7 +78,9 @@ def get_news_from_rss():
     print(f"-> {len(new_news_list)} خبر جدید برای ارسال پیدا شد.")
     return new_news_list
 
-if __name__ == "__main__":
+# --- تابع اصلی برنامه به صورت async تعریف شده است ---
+async def main():
+    """تابع اصلی برای اجرای کل فرآیند."""
     latest_news = list(reversed(get_news_from_rss()))
     
     if latest_news:
@@ -89,10 +94,9 @@ if __name__ == "__main__":
                 f"[مشاهده خبر]({news['link']})"
             )
             
-            if send_to_telegram(message):
+            if await send_to_telegram(message):
                 newly_sent_links.append(news['link'])
-                # --- اصلاحیه نهایی: افزودن تاخیر یک ثانیه‌ای ---
-                time.sleep(1)
+                time.sleep(1) # تاخیر برای جلوگیری از اسپم
 
         if newly_sent_links:
             save_new_links(newly_sent_links)
@@ -101,3 +105,8 @@ if __name__ == "__main__":
         print("-> خبر جدیدی برای ارسال پیدا نشد.")
 
     print("--- Script Finished ---")
+
+
+if __name__ == "__main__":
+    # اجرای تابع اصلی با استفاده از asyncio.run
+    asyncio.run(main())
