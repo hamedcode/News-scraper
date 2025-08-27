@@ -1,11 +1,32 @@
 import feedparser
 import os
 from bs4 import BeautifulSoup
+import telegram
 
-# نام فایلی که لینک‌های ارسال شده در آن ذخیره می‌شود
+# --- خواندن متغیرها از GitHub Secrets ---
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+CHAT_ID = os.environ.get("CHAT_ID")
 SENT_LINKS_FILE = 'sent_links.txt'
 
-print("--- Script Started (Extracting Title, Link, and Summary) ---")
+def send_to_telegram(message):
+    """یک پیام متنی دریافت کرده و به تلگرام ارسال می‌کند."""
+    if not BOT_TOKEN or not CHAT_ID:
+        print("خطا: توکن ربات یا شناسه چت تعریف نشده است. لطفاً GitHub Secrets را بررسی کنید.")
+        return False
+    
+    try:
+        bot = telegram.Bot(token=BOT_TOKEN)
+        bot.send_message(
+            chat_id=CHAT_ID, 
+            text=message, 
+            parse_mode='Markdown',
+            disable_web_page_preview=False # برای نمایش پیش‌نمایش لینک
+        )
+        print("پیام با موفقیت به تلگرام ارسال شد.")
+        return True
+    except Exception as e:
+        print(f"خطا در ارسال پیام به تلگرام: {e}")
+        return False
 
 def get_sent_links():
     """خواندن لینک‌های قبلاً ارسال شده."""
@@ -38,9 +59,7 @@ def get_news_from_rss():
             if link_tag:
                 true_title = link_tag.get_text(strip=True)
                 true_link = link_tag.get('href')
-                
-                # --- اصلاحیه اینجاست: استخراج توضیحات از فیلد summary ---
-                summary = entry.get('summary', 'توضیحات موجود نیست.')
+                summary = entry.get('summary', '')
 
                 if true_link and true_link not in sent_links:
                     new_news_list.append({
@@ -52,25 +71,34 @@ def get_news_from_rss():
     except Exception as e:
         print(f"-> خطا در خواندن فید RSS: {e}")
         
-    print(f"-> {len(new_news_list)} خبر جدید برای پردازش پیدا شد.")
+    print(f"-> {len(new_news_list)} خبر جدید برای ارسال پیدا شد.")
     return new_news_list
 
 if __name__ == "__main__":
-    latest_news = get_news_from_rss()
+    # برعکس کردن لیست اخبار جدید تا ترتیب ارسال آن‌ها از قدیمی به جدید باشد
+    latest_news = list(reversed(get_news_from_rss()))
     
     if latest_news:
-        # نمایش اطلاعات کامل در لاگ برای بررسی
-        print("\n--- اخبار جدید یافت شده ---")
+        print(f"در حال ارسال {len(latest_news)} خبر جدید به تلگرام...")
+        
+        newly_sent_links = []
         for news in latest_news:
-            print(f"عنوان: {news['title']}")
-            print(f"لینک: {news['link']}")
-            print(f"توضیحات: {news['summary']}\n")
+            # ساخت پیام با فرمت Markdown برای تلگرام
+            message = (
+                f"**{news['title']}**\n\n"
+                f"{news['summary']}\n\n"
+                f"[مشاهده خبر]({news['link']})"
+            )
+            
+            # اگر پیام با موفقیت ارسال شد، لینک آن را برای ذخیره شدن آماده کن
+            if send_to_telegram(message):
+                newly_sent_links.append(news['link'])
 
-        # فقط لینک‌ها را برای جلوگیری از ارسال تکراری ذخیره می‌کنیم
-        new_links_to_save = [news['link'] for news in latest_news]
-        save_new_links(new_links_to_save)
-        print(f"-> {len(new_links_to_save)} لینک جدید با موفقیت در فایل ذخیره شد.")
+        # فقط لینک‌هایی را ذخیره کن که با موفقیت به تلگرام ارسال شده‌اند
+        if newly_sent_links:
+            save_new_links(newly_sent_links)
+            print(f"-> {len(newly_sent_links)} لینک جدید با موفقیت ارسال و ذخیره شد.")
     else:
-        print("-> خبر جدیدی برای ذخیره پیدا نشد.")
+        print("-> خبر جدیدی برای ارسال پیدا نشد.")
 
     print("--- Script Finished ---")
