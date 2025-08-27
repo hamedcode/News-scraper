@@ -32,7 +32,6 @@ def get_news_from_rss():
         print(f"-> فید RSS شامل {len(feed.entries)} آیتم است.")
         
         for entry in feed.entries:
-            # --- اصلاحیه اصلی اینجاست ---
             # محتوای فیلد title را با BeautifulSoup تجزیه می‌کنیم
             title_html = BeautifulSoup(entry.title, 'html.parser')
             
