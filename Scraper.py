@@ -1,60 +1,40 @@
 import feedparser
 import os
 
-# نام فایلی که لینک‌های ارسال شده در آن ذخیره می‌شود
-SENT_LINKS_FILE = 'sent_links.txt'
+print("--- Script Started (RSS Diagnostic Mode) ---")
 
-print("--- Script Started (RSS Only) ---")
+# آدرس فید RSS شما
+RSS_URL = "https://politepol.com/fd/ngcVl4aeTdc8.xml"
 
-def get_sent_links():
-    """خواندن لینک‌های قبلاً ارسال شده."""
-    print("Step 1: Reading previously sent links...")
-    if not os.path.exists(SENT_LINKS_FILE):
-        print(f"-> '{SENT_LINKS_FILE}' not found. Starting fresh.")
-        return set()
-    
-    with open(SENT_LINKS_FILE, 'r', encoding='utf-8') as f:
-        links = set(line.strip() for line in f)
-        print(f"-> Found {len(links)} links in the existing file.")
-        return links
+print(f"در حال تجزیه فید RSS از آدرس: {RSS_URL}")
 
-def save_new_links(links):
-    """ذخیره لینک‌های جدید."""
-    print(f"Step 3: Saving {len(links)} new links to '{SENT_LINKS_FILE}'...")
-    with open(SENT_LINKS_FILE, 'a', encoding='utf-8') as f:
-        for link in links:
-            f.write(link + '\n')
-    print("-> Save complete.")
+try:
+    # خواندن و تجزیه فید RSS
+    feed = feedparser.parse(RSS_URL)
 
-def get_news_from_rss():
-    """استخراج اخبار از فید RSS ساخته شده."""
-    print("Step 2: Getting news from your RSS feed...")
-    # آدرس RSS شخصی شما
-   # RSS_URL = "https://fetchrss.com/feed/aK4HlnCK_13CaK4I1CdS9ZPj.rss"
-  #  RSS_URL = "https://feedfry.com/rss/11f0832c73dc039ab42e2a389ef6231a"
-    RSS_URL = "https://politepol.com/fd/ngcVl4aeTdc8.xml"
-    new_news_list = []
-    sent_links = get_sent_links()
-    try:
-        feed = feedparser.parse(RSS_URL)
-        print(f"-> RSS feed contains {len(feed.entries)} items.")
-        
-        for entry in feed.entries:
-            if entry.link not in sent_links:
-                new_news_list.append({'title': entry.title, 'link': entry.link})
-    except Exception as e:
-        print(f"-> ERROR: An error occurred while parsing the RSS feed: {e}")
-        
-    print(f"-> Parsing finished. Found {len(new_news_list)} new items to be saved.")
-    return new_news_list
-
-if __name__ == "__main__":
-    latest_news = get_news_from_rss()
-    
-    if latest_news:
-        new_links_to_save = [news['link'] for news in latest_news]
-        save_new_links(new_links_to_save)
+    # بررسی اینکه آیا فید به درستی خوانده شده و آیتمی دارد یا نه
+    if not feed.entries:
+        print("خطا: هیچ آیتمی در فید RSS پیدا نشد. فید ممکن است خالی یا نامعتبر باشد.")
     else:
-        print("Step 3: No new news items to save.")
-    
-    print("--- Script Finished ---")
+        print(f"موفقیت: تعداد {len(feed.entries)} آیتم در فید پیدا شد.")
+        print("\n--- در حال تحلیل اولین آیتم برای مشاهده تمام داده‌های موجود ---")
+
+        # انتخاب اولین آیتم خبری
+        first_entry = feed.entries[0]
+
+        # چاپ تمام کلیدهای موجود برای این آیتم
+        print(f"فیلدهای داده موجود برای اولین آیتم: {list(first_entry.keys())}")
+
+        # چاپ محتوای فیلدهای مهم و رایج
+        print("\n--- محتوای فیلدهای کلیدی ---")
+        print(f"entry.title: {first_entry.get('title', 'موجود نیست')}")
+        print(f"entry.link: {first_entry.get('link', 'موجود نیست')}")
+        print(f"entry.summary: {first_entry.get('summary', 'موجود نیست')}")
+        print(f"entry.description: {first_entry.get('description', 'موجود نیست')}")
+        print(f"entry.published: {first_entry.get('published', 'موجود نیست')}")
+        print(f"entry.id: {first_entry.get('id', 'موجود نیست')}")
+
+except Exception as e:
+    print(f"-> خطا: یک خطای پیش‌بینی نشده رخ داد: {e}")
+
+print("\n--- Script Finished ---")
