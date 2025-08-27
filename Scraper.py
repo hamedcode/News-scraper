@@ -3,14 +3,13 @@ import os
 from bs4 import BeautifulSoup
 import telegram
 import time
-import asyncio # کتابخانه جدید برای اجرای کدهای غیرهمزمان
+import asyncio
 
 # --- خواندن متغیرها از GitHub Secrets ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 SENT_LINKS_FILE = 'sent_links.txt'
 
-# --- تابع ارسال به تلگرام به صورت async تعریف شده است ---
 async def send_to_telegram(message):
     """یک پیام متنی دریافت کرده و به صورت غیرهمزمان به تلگرام ارسال می‌کند."""
     if not BOT_TOKEN or not CHAT_ID:
@@ -19,7 +18,6 @@ async def send_to_telegram(message):
     
     try:
         bot = telegram.Bot(token=BOT_TOKEN)
-        # --- کلمه کلیدی await اینجا اضافه شده است ---
         await bot.send_message(
             chat_id=CHAT_ID, 
             text=message, 
@@ -46,7 +44,7 @@ def save_new_links(links):
             f.write(link + '\n')
 
 def get_news_from_rss():
-    """استخراج اخبار (عنوان، لینک و توضیحات) از فید RSS."""
+    """استخراج اخبار و اصلاح لینک‌ها از فید RSS."""
     print("در حال دریافت اخبار از فید RSS شما...")
     RSS_URL = "https://politepol.com/fd/ngcVl4aeTdc8.xml"
     
@@ -62,13 +60,19 @@ def get_news_from_rss():
             
             if link_tag:
                 true_title = link_tag.get_text(strip=True)
-                true_link = link_tag.get('href')
+                politepol_link = link_tag.get('href')
                 summary = entry.get('summary', '')
 
-                if true_link and true_link not in sent_links:
+                # --- اصلاحیه اصلی اینجاست: جایگزینی دامنه لینک ---
+                if politepol_link:
+                    final_link = politepol_link.replace("https://politepol.com/news/", "https://tgju.org/news/")
+                else:
+                    continue
+
+                if final_link not in sent_links:
                     new_news_list.append({
                         'title': true_title, 
-                        'link': true_link,
+                        'link': final_link,
                         'summary': summary
                     })
 
@@ -78,7 +82,6 @@ def get_news_from_rss():
     print(f"-> {len(new_news_list)} خبر جدید برای ارسال پیدا شد.")
     return new_news_list
 
-# --- تابع اصلی برنامه به صورت async تعریف شده است ---
 async def main():
     """تابع اصلی برای اجرای کل فرآیند."""
     latest_news = list(reversed(get_news_from_rss()))
@@ -88,15 +91,17 @@ async def main():
         
         newly_sent_links = []
         for news in latest_news:
+            # --- اصلاحیه اصلی اینجاست: قالب‌بندی جدید پیام ---
             message = (
-                f"**{news['title']}**\n\n"
-                f"{news['summary']}\n\n"
-                f"[مشاهده خبر]({news['link']})"
+                f"📰 **{news['title']}**\n"
+                f"------------------------------------\n"
+                f"📝 {news['summary']}\n\n"
+                f"🔗 [مشاهده خبر در TGJU.org]({news['link']})"
             )
             
             if await send_to_telegram(message):
                 newly_sent_links.append(news['link'])
-                time.sleep(1) # تاخیر برای جلوگیری از اسپم
+                time.sleep(1)
 
         if newly_sent_links:
             save_new_links(newly_sent_links)
@@ -108,5 +113,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    # اجرای تابع اصلی با استفاده از asyncio.run
     asyncio.run(main())
