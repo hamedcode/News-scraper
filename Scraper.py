@@ -46,7 +46,7 @@ def save_new_links(links):
 def get_news_from_rss():
     """استخراج اخبار و اصلاح لینک‌ها از فید RSS."""
     print("در حال دریافت اخبار از فید RSS شما...")
-    RSS_URL = "https://politepol.com/fd/ngcVl4aeTdc8.xml"
+    RSS_URL = "https://politepol.com/fd/iaUGKLxDkHEl.xml"
     
     new_news_list = []
     sent_links = get_sent_links()
