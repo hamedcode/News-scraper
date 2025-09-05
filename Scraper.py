@@ -46,7 +46,8 @@ def save_new_links(links):
 def get_news_from_rss():
     """استخراج اخبار و اصلاح لینک‌ها از فید RSS."""
     print("در حال دریافت اخبار از فید RSS شما...")
-    RSS_URL = "https://politepol.com/fd/iaUGKLxDkHEl.xml"
+    # شما می‌توانید هر زمان که خواستید این آدرس را تغییر دهید
+    RSS_URL = "https://politepol.com/fd/iaUGKLxDkHEl.xml" 
     
     new_news_list = []
     sent_links = get_sent_links()
@@ -61,9 +62,9 @@ def get_news_from_rss():
             if link_tag:
                 true_title = link_tag.get_text(strip=True)
                 politepol_link = link_tag.get('href')
-                summary = entry.get('summary', '')
+                # با استفاده از .get() مطمئن می‌شویم که اگر 'summary' نبود، برنامه خطا ندهد
+                summary = entry.get('summary', '') 
 
-                # --- اصلاحیه اصلی اینجاست: جایگزینی دامنه لینک ---
                 if politepol_link:
                     final_link = politepol_link.replace("https://politepol.com/news/", "https://tgju.org/news/")
                 else:
@@ -73,7 +74,7 @@ def get_news_from_rss():
                     new_news_list.append({
                         'title': true_title, 
                         'link': final_link,
-                        'summary': summary
+                        'summary': summary.strip() # .strip() برای حذف فاصله‌های اضافی
                     })
 
     except Exception as e:
@@ -91,13 +92,21 @@ async def main():
         
         newly_sent_links = []
         for news in latest_news:
-            # --- اصلاحیه اصلی اینجاست: قالب‌بندی جدید پیام ---
-            message = (
-                f"📰 **{news['title']}**\n\n"
-                f"__________________________________\n\n"
-                f"📝 {news['summary']}\n\n"
-                f"🔗 [مشاهده خبر ]({news['link']})"
-            )
+            # --- اصلاحیه اصلی اینجاست: ساخت پیام به صورت شرطی ---
+            
+            # بخش عنوان همیشه وجود دارد
+            title_part = f"📰 **{news['title']}**"
+            
+            # بخش توضیحات فقط در صورتی اضافه می‌شود که خالی نباشد
+            summary_part = ""
+            if news['summary']:
+                summary_part = f"\n------------------------------------\n📝 {news['summary']}"
+            
+            # بخش لینک همیشه وجود دارد
+            link_part = f"\n\n🔗 [مشاهده خبر در TGJU.org]({news['link']})"
+            
+            # ترکیب نهایی بخش‌ها
+            message = f"{title_part}{summary_part}{link_part}"
             
             if await send_to_telegram(message):
                 newly_sent_links.append(news['link'])
